@@ -300,6 +300,20 @@ namespace AST{
         virtual ~Variable();
     };
     
+    enum class Parameter_kind : size_t{
+        Value, Reference, Const_reference
+    };
+    
+    struct Parameter : public Node{
+        Parameter_kind kind;
+        size_t         name_idx;
+        Type*          type;
+        
+        Parameter()                 = default;
+        Parameter(const Parameter&) = default;
+        virtual ~Parameter();
+    };
+    
     struct Prototype : public Node{
         size_t                  name_idx;
         std::vector<Parameter*> params;
