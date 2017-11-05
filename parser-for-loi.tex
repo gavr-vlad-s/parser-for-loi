@@ -235,6 +235,135 @@
 Условимся, что все заголовочные файлы (а именно, файлы с расширением \texttt{.h}) располагаются в каталоге \texttt{include}, а файлы реализации (файлы с расширением \texttt{.cpp}) --- в каталоге \texttt{src}.
 При этом условимся также, что написанный синтаксический анализатор будет порождать расположенное в памяти синтаксическое дерево обрабатываемой программы.
 
+    \subsection{Абстрактное синтаксическое дерево}
+Прежде всего опишем тип абстрактного синтаксического дерева. Это описание будет располагаться в файле \mintinline{shell-session}{ast.h}.
+\begin{minted}{c++}
+// Файл ast.h.
+#ifndef AST_H
+#define AST_H
+#include <vector>
+#include <cstddef>
+namespace AST{
+    struct Node{
+        Node()            = default;
+        Node(const Node&) = default;
+        virtual ~Node()   = 0;
+    };
+
+    struct Program : public Node{
+        std::vector<Node*> children;
+        
+        Program()               = default;
+        Program(const Program&) = default;
+        virtual ~Program();
+    };
+    
+    enum class Simple_type_kind : size_t{
+        Integer, Float, Logic, Char, String, Void
+    };
+    
+    struct Type : public Node{
+        Type()            = default;
+        Type(const Type&) = default;
+        virtual ~Type()   = 0;
+    };
+    
+    struct Expr : public Node{
+        Expr()            = default;
+        Expr(const Expr&) = default;
+        virtual ~Expr()   = 0;
+    };
+    
+    struct Simple_type: public Type{
+        Simple_type_kind kind;
+        
+        Simple_type()                   = default;
+        Simple_type(const Simple_type&) = default;
+        virtual ~Simple_type();
+    };
+    
+    struct Array_type : public Type{
+        std::vector<Expr*> dimensions;
+        Type*              elem_type;
+        
+        Array_type()                  = default;
+        Array_type(const Array_type&) = default;
+        virtual ~Array_type();
+    };
+    
+    struct Variable : public Node{
+        size_t name_idx;
+        Type*  type;
+        
+        Variable()                = default;
+        Variable(const Variable&) = default;
+        virtual ~Variable();
+    };
+    
+    struct Prototype : public Node{
+        size_t                  name_idx;
+        std::vector<Parameter*> params;
+        Type*                   ret_val;
+        
+        Prototype()                 = default;
+        Prototype(const Prototype&) = default;
+        virtual ~Prototype();
+    };
+    
+    struct Function : public Node{
+        Prototype*         proto;
+        std::vector<Node*> body;
+        
+        Function()                = default;
+        Function(const Function&) = default;
+        virtual ~Function();
+    };
+    
+    enum class Unary_kind : size_t{
+        Logical_not, Bitwise_not, Plus, Minus
+    };
+    
+    struct Unary : public Expr{
+        Unary_kind kind;
+        Expr*      operand;    
+        
+        Unary()             = default;
+        Unary(const Unary&) = default;
+        virtual ~Unary();
+    };
+    
+    enum class Binary_kind : size_t{
+        Logical_or,    Logical_orn,      Logical_xor,  Logical_xorn,  Logical_and,   
+        Logical_andn,  Less,             Greater,      Equal,         Not_equal,    
+        Less_or_equal, Greater_or_equal, Bitwise_or,   Bitwise_orn,   Bitwise_xor,
+        Bitwise_xorn,  Bitwise_and,      Bitwise_andn, Left_shift,    Right_shift,
+        Add,           Sub,              Mul,          Div,           Mod,
+        Float_div,     Power,            Float_power,  Dimension_size
+    };
+    
+    struct Binary : public Expr{
+        Binary_kind kind;
+        Expr*       left_op;    
+        Expr*       right_op;
+        
+        Binary()              = default;
+        Binary(const Binary&) = default;
+        virtual ~Binary();
+    };
+    
+    struct Ternary : public Expr{
+        Expr*       condition;
+        Expr*       true_branch_op;    
+        Expr*       false_branch_op;
+        
+        Ternary()              = default;
+        Ternary(const Ternary&) = default;
+        virtual ~Ternary();
+    };
+}
+#endif
+\end{minted}
+
 %Проект Мяука представляет собой генератор лексических анализаторов, порождающий текст лексического анализатора на языке C++. К данному моменту имеется достаточно много таких генераторов, например \href{http://www.ssw.uni-linz.ac.at/Coco}{Coco/R}, \href{http://flex.sourceforge.net}{flex}, \href{http://www.mario-konrad.ch/wiki/doku.php?id=programming:flexbison:flexppbisonpp}{flex++}, \href{http://flexcpp.sourceforge.net}{flexc++}, и этот список далеко не полон. Однако у всех этих генераторов есть один общий недостаток. Состоит указанный недостаток в том, что этими генераторами, по существу, автоматизируются лишь задачи проверки корректности записи и обнаружения начала лексем, а порождение значения лексемы по её строковому представлению должно выполняться вызываемой после проверки корректности лексемы функцией, написанной пользователем генератора. При этом, во–первых, дважды выполняется проход по фрагменту входной строки, и, во–вторых, приходится вручную реализовывать часть конечного автомата, построенного генератором лексических анализаторов. Предлагаемый генератор нацелен на устранение данного недостатка.
 %
 %\chapter{Сведения из теории формальных языков}
